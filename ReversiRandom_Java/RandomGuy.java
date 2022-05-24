@@ -64,16 +64,13 @@ class RandomGuy {
     // validMoves is a list of valid locations that you could place your "stone" on this turn
     // Note that "state" is a global variable 2D list that shows the state of the game
     private int move() {        
-        //IMPORTANT!! depth must be a multiple of 2
-        int depthToExplore = 5;
-        int move = exploreState(state, depthToExplore, true);
-        System.out.println("Selected Move: " + move);
+        int depthToExplore = 6;
+        int move = exploreState(state, depthToExplore, 10000, true);
         return move;
     }
 
-    private int exploreState(int[][] givenState, int depthToExplore, boolean initialCall){
+    private int exploreState(int[][] givenState, int depthToExplore, int previousMax, boolean initialCall){
         int initialState[][] = copyState(givenState);
-        System.out.println("Exploring state, depth = " + depthToExplore);
         // base case
         if(depthToExplore == 0){
             return evaluateState(givenState);
@@ -83,17 +80,28 @@ class RandomGuy {
         int numValidMovesThisState = numValidMoves;
         int validMovesThisState[] = validMoves.clone();
         int moveValues[] = new int[numValidMovesThisState];
+        int maxSoFar = -10000;
         // for each possible move
         for( int i = 0; i < numValidMovesThisState; i++ ){
             // make copy of state
             int copyState[][] = copyState(givenState);
-            
+
+            //prune
+            if(i > 0){
+                if(moveValues[i-1] > maxSoFar){
+                    maxSoFar = moveValues[i-1];
+                }
+            }
+            if(maxSoFar > previousMax){
+                return -1*maxSoFar;
+            }
+
             // make move
             givenState = makeMoveOnState(givenState, validMovesThisState[i]);
             
             // evaluate value of move using heuristic function
             switchPlayers();
-            moveValues[i] = exploreState(givenState, depthToExplore-1, false);
+            moveValues[i] = exploreState(givenState, depthToExplore-1, -1*maxSoFar, false);
             switchPlayers();
 
             // revert state to original
@@ -477,7 +485,97 @@ class RandomGuy {
 
     private int[][] makeMoveOnState(int state[][], int move){
         state[move/8][move%8] = me;
+        changeColors(state, move/8, move%8, me);
         return state;
+    }
+
+    public static void changeColors(int givenState[][], int row, int col, int turn) {
+        int incx, incy;
+        
+        for (incx = -1; incx < 2; incx++) {
+            for (incy = -1; incy < 2; incy++) {
+                if ((incx == 0) && (incy == 0))
+                    continue;
+                checkDirectionExt(givenState, row, col, incx, incy, turn);
+            }
+        }
+    }
+
+    public static void checkDirectionExt(int state[][], int row, int col, int incx, int incy, int turn) {
+        int sequence[] = new int[7];
+        int seqLen;
+        int i, r, c;
+        
+        seqLen = 0;
+        for (i = 1; i < 8; i++) {
+            r = row+incy*i;
+            c = col+incx*i;
+        
+            if ((r < 0) || (r > 7) || (c < 0) || (c > 7))
+                break;
+        
+            sequence[seqLen] = state[r][c];
+            seqLen++;
+        }
+        
+        int count = 0;
+        for (i = 0; i < seqLen; i++) {
+            if (turn == 0) {
+                if (sequence[i] == 2)
+                    count ++;
+                else {
+                    if ((sequence[i] == 1) && (count > 0))
+                        count = 20;
+                    break;
+                }
+            }
+            else {
+                if (sequence[i] == 1)
+                    count ++;
+                else {
+                    if ((sequence[i] == 2) && (count > 0))
+                        count = 20;
+                    break;
+                }
+            }
+        }
+        
+        if (count > 10) {
+            if (turn == 0) {
+                i = 1;
+                r = row+incy*i;
+                c = col+incx*i;
+                while (state[r][c] == 2) {
+                    state[r][c] = 1;
+                    i++;
+                    r = row+incy*i;
+                    c = col+incx*i;
+                }
+            }
+            else {
+                i = 1;
+                r = row+incy*i;
+                c = col+incx*i;
+                while (state[r][c] == 1) {
+                    state[r][c] = 2;
+                    i++;
+                    r = row+incy*i;
+                    c = col+incx*i;
+                }
+            }
+        }
+    }
+
+    public static void printState(int state[][]) {
+        int i, j;
+        
+        for (i = 7; i >= 0; i--) {
+            for (j = 0; j < 8; j++) {
+                System.out.print(state[i][j]);
+            }
+            System.out.println();
+        }
+        System.out.println();
     }
     
     // generates the set of valid moves for the player; returns a list of valid moves (validMoves)
