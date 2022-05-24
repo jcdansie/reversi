@@ -64,7 +64,8 @@ class RandomGuy {
     // validMoves is a list of valid locations that you could place your "stone" on this turn
     // Note that "state" is a global variable 2D list that shows the state of the game
     private int move() {        
-        int depthToExplore = 6;
+        //IMPORTANT!! depth must be a multiple of 2
+        int depthToExplore = 5;
         int move = exploreState(state, depthToExplore, true);
         System.out.println("Selected Move: " + move);
         return move;
@@ -126,75 +127,342 @@ class RandomGuy {
         }
     }
 
+    //TODO: Beginning play in center 16
+    // mid game claim corners, A6,A3,C8,C1,G8,G1,H6,H3 and center 16
+    // corners and spots connected to corners we control
+
+    //make more conditional: want to play majority in the center until we can take a corner 2 spots from corner also good
+    // once we have the corner play in a way that builds out from that area. Still take corners when possible
     private int evaluateState(int givenState[][]) {
         int stateValue = 0;
 
-        // add 1 for your square, subtract 1 for their square
-        for(int i = 0; i < givenState.length; i++){
-            for(int j = 0; j < givenState[i].length; j++){
-                if(givenState[i][j] == me){
-                    stateValue += 1;
-                }else if(givenState[i][j] != 0){
-                    stateValue -= 1;
+        //if we control a corner
+        if (givenState[0][0] == me || givenState[0][7] == me || givenState[7][0] == me || givenState[7][7] == me) {
+            //Award points for each corner we control and subtract if they control
+            if (givenState[0][0] == me) {
+                stateValue += 15;
+            } else if (givenState[0][0] != 0) {
+                stateValue -= 15;
+            }
+            if (givenState[0][7] == me) {
+                stateValue += 15;
+            } else if (givenState[0][7] != 0) {
+                stateValue -= 15;
+            }
+            if (givenState[7][0] == me) {
+                stateValue += 15;
+            } else if (givenState[7][0] != 0) {
+                stateValue -= 15;
+            }
+            if (givenState[7][7] == me) {
+                stateValue += 15;
+            } else if (givenState[7][7] != 0) {
+                stateValue -= 15;
+            }
+            // play connecting from our corner
+            for(int i = 0; i < givenState.length; i++){
+                for(int j = 0; j < givenState[i].length; j++){
+                    boolean buildCorner = buildsFromCorner(givenState,i,j);
+                    if(givenState[i][j] == me && buildCorner){
+                        stateValue += 10;
+                    }else if (givenState[i][j] == me && !buildCorner) {
+                        stateValue += 5;
+                    }
+                    else if(givenState[i][j] != 0){
+                        stateValue -= 7;
+                    }
+                }
+            }
+            // center of board(inner 16) when can't grow from corner
+            for(int i = 2; i < givenState.length - 2; i++){
+                for(int j = 2; j < givenState[i].length - 2; j++){
+                    if(givenState[i][j] == me){
+                        stateValue += 5;
+                    }else if(givenState[i][j] != 0){
+                        stateValue -= 5;
+                    }
                 }
             }
         }
 
-        // add 3 for your square on edge, subtract 3 for their square on edge
-        for(int i = 0; i < givenState[0].length; i++){
-            if(givenState[0][i] == me) {
-                stateValue += 10;
-            } else if(givenState[0][i] != 0){
-                stateValue -= 10;
+        //if We don't control any corners award more points for
+        // play in center of board
+        //away from spots touching corner
+        // spots 2 spaces away from corner good
+        // want to claim corner
+        else {
+            //subtract for each corner they control
+            if (givenState[0][0] != 0) {
+                stateValue -= 15;
+            }
+            if (givenState[0][7] != 0) {
+                stateValue -= 15;
+            }
+            if (givenState[7][0] != 0) {
+                stateValue -= 15;
+            }
+            if (givenState[7][7] != 0) {
+                stateValue -= 15;
+            }
+            //avoid spots directly connected to corner and force opponent to play in those spaces if they don't have the corner
+            if (givenState[0][1] == me) {
+                stateValue -= 3;
+            }else if (givenState[0][1] != 0 && givenState[0][0] == 0) {
+                stateValue += 3;
+            }
+            if (givenState[1][0] == me) {
+                stateValue -=3;
+            } else if (givenState[1][0] != 0 && givenState[0][0] == 0) {
+                stateValue += 3;
+            }
+            if (givenState[1][1] == me) {
+                stateValue -= 6;
+            } else if (givenState[1][1] != 0 && givenState[0][0] == 0) {
+                stateValue += 7;
+            }
+            if (givenState[0][6] == me) {
+                stateValue -= 3;
+            }else if (givenState[0][6] != 0 && givenState[0][7] == 0) {
+                stateValue += 3;
+            }
+            if (givenState[1][7] == me) {
+                stateValue -= 3;
+            } else if ( givenState[1][7] != 0 && givenState[0][7] == 0) {
+                stateValue += 3;
+            }
+            if (givenState[1][6] == me ) {
+                stateValue -= 6;
+            } else if (givenState[1][6] != 0 && givenState[0][7] == 0) {
+                stateValue += 7;
+            }
+            if (givenState[7][6] == me) {
+                stateValue -= 3;
+            }else if (givenState[7][6] != 0 && givenState[7][7] == 0) {
+                stateValue += 3;
+            }
+            if (givenState[6][7] == me) {
+                stateValue -= 3;
+            } else if (givenState[6][7] != 0 && givenState[7][7] == 0) {
+                stateValue += 3;
+            }
+            if (givenState[6][6] == me) {
+                stateValue -= 6;
+            } else if (givenState[6][6] != 0 && givenState[7][7] == 0) {
+                stateValue += 7;
+            }
+            if(givenState[6][0] == me) {
+                stateValue -= 3;
+            } else if (givenState[6][0] != 0 && givenState[7][0] == 0) {
+                stateValue += 3;
+            }
+            if (givenState[7][1] == me) {
+                stateValue -= 3;
+            } else if (givenState[7][1] != 0 && givenState[7][0] == 0) {
+                stateValue += 3;
+            }
+            if (givenState[6][1] == me) {
+                stateValue -= 6;
+            } else if (givenState[6][1] != 0 && givenState[7][0] == 0) {
+                stateValue += 7;
+            }
+            //Want spots 2 spaces from corner
+            if (givenState[0][2] == me ) {
+                stateValue += 6;
+            } else if (givenState[0][2] != 0) {
+                stateValue -= 6;
+            }
+            if (givenState[2][0] == me) {
+                stateValue += 6;
+            } else if (givenState[0][2] != 0) {
+                stateValue -=6;
+            }
+            if (givenState[0][5] == me) {
+                stateValue += 6;
+            } else if (givenState[0][5] != 0) {
+                stateValue -=6;
+            }
+            if (givenState[2][7] == me) {
+                stateValue += 6;
+            } else if (givenState[2][7] != 0) {
+                stateValue -= 6;
+            }
+            if (givenState[5][7] == me) {
+                stateValue += 6;
+            } else if (givenState[5][7] != 0) {
+                stateValue -= 6;
+            }
+            if (givenState[7][5] == me) {
+                stateValue += 6;
+            } else if (givenState[7][5] != 0) {
+                stateValue -= 6;
+            }
+            if (givenState[7][2] == me) {
+                stateValue += 6;
+            } else if (givenState[7][2] != 0) {
+                stateValue -= 6;
+            }
+            if (givenState[5][0] == me) {
+                stateValue += 6;
+            } else if (givenState[5][0] != 0) {
+                stateValue -= 6;
+            }
+            // center of board(inner 16)
+            for(int i = 2; i < givenState.length - 2; i++){
+                for(int j = 2; j < givenState[i].length - 2; j++){
+                    if(givenState[i][j] == me){
+                        stateValue += 7;
+                    }else if(givenState[i][j] != 0){
+                        stateValue -= 7;
+                    }
+                }
             }
         }
-        int maxIndex = givenState.length-1;
-        for(int i = 0; i < givenState[maxIndex].length; i++){
-            if(givenState[maxIndex][i] == me) {
-                stateValue += 10;
-            } else if(givenState[maxIndex][i] != 0){
-                stateValue -= 10;
-            }
-        }
-        for(int i = 0; i < givenState.length; i++){
-            if(givenState[i][0] == me) {
-                stateValue += 10;
-            } else if(givenState[i][0] != 0){
-                stateValue -= 10;
-            }
-        }
-        for(int i = 0; i < givenState.length; i++){
-            if(givenState[i][maxIndex] == me) {
-                stateValue += 10;
-            } else if(givenState[i][maxIndex] != 0){
-                stateValue -= 10;
-            }
-        }
-
-        // add 15 for your square in corner, subtract 15 for their square in corner
-        if(givenState[0][0] == me) {
-            stateValue += 150;
-        } else if(givenState[0][0] != 0){
-            stateValue -= 150;
-        }
-        if(givenState[0][maxIndex] == me) {
-            stateValue += 150;
-        } else if(givenState[0][maxIndex] != 0){
-            stateValue -= 150;
-        }
-        if(givenState[maxIndex][0] == me) {
-            stateValue += 150;
-        } else if(givenState[maxIndex][0] != 0){
-            stateValue -= 150;
-        }
-        if(givenState[maxIndex][maxIndex] == me) {
-            stateValue += 150;
-        } else if(givenState[maxIndex][maxIndex] != 0){
-            stateValue -= 150;
-        }
-
         return stateValue;
     }
+
+    private boolean buildsFromCorner(int[][] givenState, int i, int j) { //i and j are index of the piece we are looking at
+        // check each direction if it connects to our piece
+        //[-1][-1] , [-1][0], [-1][+1], [0][+1], [+1][+1], [+1][0], [+1][-1], [0][-1]
+        // recursively follow that path to either wall, corner, or opposing piece
+        // if corner return true
+        // if wall continue to corner
+        // if opposing piece return false
+        return false;
+    }
+//    private int evaluateState(int givenState[][]) {
+//        int stateValue = 0;
+//
+//        // add 1 for your square, subtract 1 for their square
+//        for(int i = 0; i < givenState.length; i++){
+//            for(int j = 0; j < givenState[i].length; j++){
+//                if(givenState[i][j] == me){
+//                    stateValue += 1;
+//                }else if(givenState[i][j] != 0){
+//                    stateValue -= 1;
+//                }
+//            }
+//        }
+//
+//        // add 3 for your square on edge not counting directly next to corner, subtract 3 for their square on edge
+//        for(int i = 1; i < givenState[0].length - 1; i++){
+//            if(givenState[0][i] == me) {
+//                stateValue += 3;
+//            } else if(givenState[0][i] != 0){
+//                stateValue -= 3;
+//            }
+//        }
+//        int maxIndex = givenState.length-1;
+//        for(int i = 1; i < givenState[maxIndex].length -1; i++){
+//            if(givenState[maxIndex][i] == me) {
+//                stateValue += 3;
+//            } else if(givenState[maxIndex][i] != 0){
+//                stateValue -= 3;
+//            }
+//        }
+//        for(int i = 1; i < givenState.length -1; i++){
+//            if(givenState[i][0] == me) {
+//                stateValue += 3;
+//            } else if(givenState[i][0] != 0){
+//                stateValue -= 3;
+//            }
+//        }
+//        for(int i = 1; i < givenState.length -1; i++){
+//            if(givenState[i][maxIndex] == me) {
+//                stateValue += 3;
+//            } else if(givenState[i][maxIndex] != 0){
+//                stateValue -= 3;
+//            }
+//        }
+//
+//        //want spots 2 away from corner
+//        if (givenState[0][2] == me) {
+//            stateValue += 3;
+//        } else if (givenState[0][2] != 0) {
+//            stateValue -= 5;
+//        }
+//        if (givenState[2][0] == me) {
+//            stateValue +=3;
+//        } else if (givenState[2][0] != 0) {
+//            stateValue -= 5;
+//        }
+//        if (givenState[maxIndex][2] == me) {
+//            stateValue += 3;
+//        } else if (givenState[maxIndex][2] != 0) {
+//            stateValue -= 5;
+//        }
+//        if (givenState[2][maxIndex] == me) {
+//            stateValue +=3;
+//        } else if (givenState[2][maxIndex] != 0) {
+//            stateValue -= 5;
+//        }
+//        if (givenState[0][maxIndex-2] == me) {
+//            stateValue += 3;
+//        } else if (givenState[0][maxIndex -2] != 0) {
+//            stateValue -= 5;
+//        }
+//        if (givenState[maxIndex-2][0] == me) {
+//            stateValue +=3;
+//        } else if (givenState[maxIndex-2][0] != 0) {
+//            stateValue -= 5;
+//        }
+//        if (givenState[maxIndex-2][maxIndex] == me) {
+//            stateValue +=3;
+//        } else if (givenState[maxIndex-2][maxIndex] != 0) {
+//            stateValue -= 5;
+//        }
+//        if (givenState[maxIndex][maxIndex-2] == me) {
+//            stateValue +=3;
+//        } else if (givenState[maxIndex][maxIndex-2] != 0) {
+//            stateValue -= 5;
+//        }
+//
+//        //don't want diagonal unless we control corner
+//        if (givenState[0][0] != 0 && givenState[1][1] == me) {
+//            stateValue -= 100;
+//        } else if (givenState[0][0] == me && givenState[1][1] == me) {
+//            stateValue += 10;
+//        }
+//        if (givenState[maxIndex][0] != 0 && givenState[maxIndex -1][1] == me) {
+//            stateValue -= 100;
+//        } else if (givenState[maxIndex][0] == me && givenState[maxIndex-1][1] == me) {
+//            stateValue += 10;
+//        }
+//        if (givenState[0][maxIndex] != 0 && givenState[1][maxIndex-1] == me) {
+//            stateValue -= 100;
+//        } else if (givenState[0][maxIndex] == me && givenState[1][maxIndex-1] == me) {
+//            stateValue += 10;
+//        }
+//        if (givenState[maxIndex][maxIndex] != 0 && givenState[maxIndex-1][maxIndex-1] == me) {
+//            stateValue -= 100;
+//        } else if (givenState[maxIndex][maxIndex] == me && givenState[maxIndex-1][maxIndex-1] == me) {
+//            stateValue += 10;
+//        }
+//
+//
+//        // add 15 for your square in corner, subtract 15 for their square in corner
+//        if(givenState[0][0] == me) {
+//            stateValue += 20;
+//        } else if(givenState[0][0] != 0){
+//            stateValue -= 25;
+//        }
+//        if(givenState[0][maxIndex] == me) {
+//            stateValue += 20;
+//        } else if(givenState[0][maxIndex] != 0){
+//            stateValue -= 25;
+//        }
+//        if(givenState[maxIndex][0] == me) {
+//            stateValue += 20;
+//        } else if(givenState[maxIndex][0] != 0){
+//            stateValue -= 25;
+//        }
+//        if(givenState[maxIndex][maxIndex] == me) {
+//            stateValue += 20;
+//        } else if(givenState[maxIndex][maxIndex] != 0){
+//            stateValue -= 25;
+//        }
+//
+//        return stateValue;
+//    }
 
     private int[][] copyState(int state[][]) {
         int newState[][] = new int[8][8];
