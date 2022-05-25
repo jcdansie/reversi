@@ -64,6 +64,7 @@ class RandomGuy {
     // validMoves is a list of valid locations that you could place your "stone" on this turn
     // Note that "state" is a global variable 2D list that shows the state of the game
     private int move() {
+
         int depthToExplore = 5;
         int move = exploreState(state, depthToExplore, 10000, true);
         return move;
@@ -148,24 +149,24 @@ class RandomGuy {
         if (givenState[0][0] == me || givenState[0][7] == me || givenState[7][0] == me || givenState[7][7] == me) {
             //Award points for each corner we control and subtract if they control
             if (givenState[0][0] == me) {
-                stateValue += 50;
+                stateValue -= 1000;
             } else if (givenState[0][0] != 0) {
-                stateValue -= 50;
+                stateValue -= 2000;
             }
             if (givenState[0][7] == me) {
-                stateValue += 50;
+                stateValue -= 1000;
             } else if (givenState[0][7] != 0) {
-                stateValue -= 50;
+                stateValue -= 2000;
             }
             if (givenState[7][0] == me) {
-                stateValue += 50;
+                stateValue -= 1000;
             } else if (givenState[7][0] != 0) {
-                stateValue -= 50;
+                stateValue -= 2000;
             }
             if (givenState[7][7] == me) {
-                stateValue += 50;
+                stateValue -= 1000;
             } else if (givenState[7][7] != 0) {
-                stateValue -= 50;
+                stateValue -= 2000;
             }
             // play connecting from our corner
             for(int i = 0; i < givenState.length; i++){
@@ -201,16 +202,16 @@ class RandomGuy {
         else {
             //subtract for each corner they control
             if (givenState[0][0] != 0) {
-                stateValue -= 50;
+                stateValue -= 1000;
             }
             if (givenState[0][7] != 0) {
-                stateValue -= 50;
+                stateValue -= 1000;
             }
             if (givenState[7][0] != 0) {
-                stateValue -= 50;
+                stateValue -= 1000;
             }
             if (givenState[7][7] != 0) {
-                stateValue -= 50;
+                stateValue -= 1000;
             }
             //avoid spots directly connected to corner and force opponent to play in those spaces if they don't have the corner
             if (givenState[0][1] == me) {
@@ -224,7 +225,7 @@ class RandomGuy {
                 stateValue += 3;
             }
             if (givenState[1][1] == me) {
-                stateValue -= 25;
+                stateValue -= 1000;
             } else if (givenState[1][1] != 0 && givenState[0][0] == 0) {
                 stateValue += 20;
             }
@@ -239,7 +240,7 @@ class RandomGuy {
                 stateValue += 3;
             }
             if (givenState[1][6] == me ) {
-                stateValue -= 25;
+                stateValue -= 1000;
             } else if (givenState[1][6] != 0 && givenState[0][7] == 0) {
                 stateValue += 20;
             }
@@ -254,7 +255,7 @@ class RandomGuy {
                 stateValue += 3;
             }
             if (givenState[6][6] == me) {
-                stateValue -= 25;
+                stateValue -= 1000;
             } else if (givenState[6][6] != 0 && givenState[7][7] == 0) {
                 stateValue += 20;
             }
@@ -269,7 +270,7 @@ class RandomGuy {
                 stateValue += 3;
             }
             if (givenState[6][1] == me) {
-                stateValue -= 25;
+                stateValue -= 1000;
             } else if (givenState[6][1] != 0 && givenState[7][0] == 0) {
                 stateValue += 20;
             }
@@ -625,7 +626,7 @@ class RandomGuy {
 
     public static void changeColors(int givenState[][], int row, int col, int turn) {
         int incx, incy;
-        
+
         for (incx = -1; incx < 2; incx++) {
             for (incy = -1; incy < 2; incy++) {
                 if ((incx == 0) && (incy == 0))
@@ -639,19 +640,19 @@ class RandomGuy {
         int sequence[] = new int[7];
         int seqLen;
         int i, r, c;
-        
+
         seqLen = 0;
         for (i = 1; i < 8; i++) {
             r = row+incy*i;
             c = col+incx*i;
-        
+
             if ((r < 0) || (r > 7) || (c < 0) || (c > 7))
                 break;
-        
+
             sequence[seqLen] = state[r][c];
             seqLen++;
         }
-        
+
         int count = 0;
         for (i = 0; i < seqLen; i++) {
             if (turn == 0) {
@@ -673,7 +674,7 @@ class RandomGuy {
                 }
             }
         }
-        
+
         if (count > 10) {
             if (turn == 0) {
                 i = 1;
