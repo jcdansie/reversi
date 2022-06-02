@@ -65,7 +65,7 @@ class RandomGuy {
     // Note that "state" is a global variable 2D list that shows the state of the game
     private int move() {
 
-        int depthToExplore = 5;
+        int depthToExplore = 6;
         int move = exploreState(state, depthToExplore, 10000, true);
         return move;
     }
@@ -618,9 +618,19 @@ class RandomGuy {
         return newState;
     }
 
+
+    private void printState(int state[][]) {
+        for(int j = 0; j < state.length; j++){
+            for(int k = 0; k < state[j].length; k++){
+                System.out.print(state[j][k]);
+            }
+            System.out.println();
+        }
+    }
+
     private int[][] makeMoveOnState(int state[][], int move){
         state[move/8][move%8] = me;
-        changeColors(state, move/8, move%8, me);
+        changeColors(state, move/8, move%8, me-1);
         return state;
     }
 
@@ -636,7 +646,7 @@ class RandomGuy {
         }
     }
 
-    public static void checkDirectionExt(int state[][], int row, int col, int incx, int incy, int turn) {
+    public static void checkDirectionExt(int givenState[][], int row, int col, int incx, int incy, int turn) {
         int sequence[] = new int[7];
         int seqLen;
         int i, r, c;
@@ -649,7 +659,7 @@ class RandomGuy {
             if ((r < 0) || (r > 7) || (c < 0) || (c > 7))
                 break;
 
-            sequence[seqLen] = state[r][c];
+            sequence[seqLen] = givenState[r][c];
             seqLen++;
         }
 
@@ -680,8 +690,8 @@ class RandomGuy {
                 i = 1;
                 r = row+incy*i;
                 c = col+incx*i;
-                while (state[r][c] == 2) {
-                    state[r][c] = 1;
+                while (givenState[r][c] == 2) {
+                    givenState[r][c] = 1;
                     i++;
                     r = row+incy*i;
                     c = col+incx*i;
@@ -691,8 +701,8 @@ class RandomGuy {
                 i = 1;
                 r = row+incy*i;
                 c = col+incx*i;
-                while (state[r][c] == 1) {
-                    state[r][c] = 2;
+                while (givenState[r][c] == 1) {
+                    givenState[r][c] = 2;
                     i++;
                     r = row+incy*i;
                     c = col+incx*i;
