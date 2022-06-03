@@ -84,6 +84,22 @@ class RandomGuy {
         int maxSoFar = -10000;
         // for each possible move
         for( int i = 0; i < numValidMovesThisState; i++ ){
+            
+            int moveX = validMovesThisState[i]/8;
+            int moveY = validMovesThisState[i]%8;
+            if(moveX == 1 || moveX == 6){
+                if(moveY == 0 || moveY == 7 || moveY == 1 || moveY == 6){
+                    moveValues[i] = -10000;
+                    continue;
+                }
+            }
+            else if(moveX == 0 || moveX == 7){
+                if(moveY == 1 || moveY == 6){
+                    moveValues[i] = -10000;
+                    continue;
+                }
+            }
+            
             // make copy of state
             int copyState[][] = copyState(givenState);
 
@@ -113,7 +129,7 @@ class RandomGuy {
 
         // get max of moves
         int maxMove = 0;
-        int maxMoveValue = 0;
+        int maxMoveValue = -100000;
         for (int i = 0; i < moveValues.length; i++){
             if( moveValues[i] > maxMoveValue) {
                 maxMove = i;
@@ -136,6 +152,10 @@ class RandomGuy {
         }
     }
 
+    // private int evaluateState2(int givenState[][]){
+    //     if(cornerOb)
+    // }
+
     //TODO: Beginning play in center 16
     // mid game claim corners, A6,A3,C8,C1,G8,G1,H6,H3 and center 16
     // corners and spots connected to corners we control
@@ -149,22 +169,22 @@ class RandomGuy {
         if (givenState[0][0] == me || givenState[0][7] == me || givenState[7][0] == me || givenState[7][7] == me) {
             //Award points for each corner we control and subtract if they control
             if (givenState[0][0] == me) {
-                stateValue -= 1000;
+                stateValue += 1000;
             } else if (givenState[0][0] != 0) {
                 stateValue -= 2000;
             }
             if (givenState[0][7] == me) {
-                stateValue -= 1000;
+                stateValue += 1000;
             } else if (givenState[0][7] != 0) {
                 stateValue -= 2000;
             }
             if (givenState[7][0] == me) {
-                stateValue -= 1000;
+                stateValue += 1000;
             } else if (givenState[7][0] != 0) {
                 stateValue -= 2000;
             }
             if (givenState[7][7] == me) {
-                stateValue -= 1000;
+                stateValue += 1000;
             } else if (givenState[7][7] != 0) {
                 stateValue -= 2000;
             }
@@ -201,16 +221,16 @@ class RandomGuy {
         // want to claim corner
         else {
             //subtract for each corner they control
-            if (givenState[0][0] != 0) {
+            if (givenState[0][0] != 0 && givenState[0][0] != me) {
                 stateValue -= 1000;
             }
-            if (givenState[0][7] != 0) {
+            if (givenState[0][7] != 0 && givenState[0][0] != me) {
                 stateValue -= 1000;
             }
-            if (givenState[7][0] != 0) {
+            if (givenState[7][0] != 0 && givenState[0][0] != me) {
                 stateValue -= 1000;
             }
-            if (givenState[7][7] != 0) {
+            if (givenState[7][7] != 0 && givenState[0][0] != me) {
                 stateValue -= 1000;
             }
             //avoid spots directly connected to corner and force opponent to play in those spaces if they don't have the corner
@@ -220,7 +240,7 @@ class RandomGuy {
                 stateValue += 3;
             }
             if (givenState[1][0] == me) {
-                stateValue -=3;
+                stateValue -= 3;
             } else if (givenState[1][0] != 0 && givenState[0][0] == 0) {
                 stateValue += 3;
             }
@@ -283,12 +303,12 @@ class RandomGuy {
             if (givenState[2][0] == me) {
                 stateValue += 6;
             } else if (givenState[0][2] != 0) {
-                stateValue -=6;
+                stateValue -= 6;
             }
             if (givenState[0][5] == me) {
                 stateValue += 6;
             } else if (givenState[0][5] != 0) {
-                stateValue -=6;
+                stateValue -= 6;
             }
             if (givenState[2][7] == me) {
                 stateValue += 6;
