@@ -26,7 +26,7 @@ public class SearchTree {
 
     public int explore() {
         // select one randomly
-        int myMove = validMoves[generator.nextInt(numValidMoves)];
+        int myMove = validMoves[generator.nextInt(numValidMoves+1)];
         // assign newState as state + the random move
         return myMove;
     }
