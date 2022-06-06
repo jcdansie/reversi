@@ -12,6 +12,7 @@ class MonteCarlo {
 
     double t1, t2;
     int me;
+    int origMe;
     int boardState;
     int state[][] = new int[8][8]; // state[0][0] is the bottom left corner of the board (on the GUI)
     int turn = -1;
@@ -26,6 +27,7 @@ class MonteCarlo {
     // main function that (1) establishes a connection with the server, and then plays whenever it is this player's turn
     public MonteCarlo(int _me, String host) {
         me = _me;
+        origMe = _me;
         initClient(host);
 
         int myMove;
@@ -39,6 +41,7 @@ class MonteCarlo {
                 getValidMoves(round, state);
 
                 myMove = move();
+                me = origMe;
                 getValidMoves(round, state);
 
                 String sel = validMoves[myMove] / 8 + "\n" + validMoves[myMove] % 8;
@@ -60,15 +63,16 @@ class MonteCarlo {
     // Note that "state" is a global variable 2D list that shows the state of the game
     private int move() {
         //while time remains for move
-        root = new SearchTree(state, me);
+        root = new SearchTree(copyState(state), me);
         Vector<SearchTree> possibleMoves = new Vector<>();
         int myMove = 0;
-        long endTime = System.currentTimeMillis() + 2000;
+        long endTime = System.currentTimeMillis() + 5200;
         while (System.currentTimeMillis() < endTime) {
             //myMove = generator.nextInt(numValidMoves);
             SearchTree nextLeaf =  traverse(root);
             possibleMoves.add(nextLeaf);
             int currentResult = rollout(nextLeaf);
+            me = origMe;
             backPropagate(nextLeaf, currentResult);
         }
         //after time take move that had best win percentages
@@ -101,7 +105,7 @@ class MonteCarlo {
         int numValidMovesThisState = numValidMoves;
         int[] validMovesThisState = validMoves.clone();
         // select one randomly
-        int myMove = validMovesThisState[generator.nextInt(numValidMovesThisState)];
+        int myMove = validMovesThisState[generator.nextInt(numValidMovesThisState+1)];
         // assign newState as state + the random move
         makeMoveOnState(newState, myMove);
         return newState;
@@ -121,8 +125,9 @@ class MonteCarlo {
         int move = 0;
         double percentage = 0;
         for (int i = 0; i < moves.size(); i++) {
-            if (moves.get(i).wins / (double)moves.get(i).visits >= percentage) {
-                move = moves.get(i).move;
+            if (moves.get(i).wins / (double)moves.get(i).visits > percentage) {
+                //move = moves.get(i).move;
+                move = i;
                 percentage = moves.get(i).wins / (double)moves.get(i).visits;
             }
         }
