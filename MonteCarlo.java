@@ -1,4 +1,7 @@
 import java.util.*;
+
+import javax.naming.spi.DirStateFactory.Result;
+
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -83,7 +86,19 @@ class MonteCarlo {
             SearchTree leaf = new SearchTree(makeMoveOnState(copyState(state), validMovesThisState[i]),me, root, validMovesThisState[i]);
             possibleMoves.add(leaf);
         }
-        long endTime = System.currentTimeMillis() + 4000;
+
+        long endTime = System.currentTimeMillis() + 2000;
+        while (System.currentTimeMillis() < endTime) {
+            for (int j = 0; j < possibleMoves.size(); j++){
+                SearchTree nextLeaf =  possibleMoves.elementAt(j);
+                int currentResult = rollout(nextLeaf);
+                nextLeaf.setVisits();
+                me = origMe;
+                backPropagate(nextLeaf, currentResult);
+            }
+        }
+
+        endTime = System.currentTimeMillis() + 2000;
         while (System.currentTimeMillis() < endTime) {
             SearchTree nextLeaf =  traverse(possibleMoves);
             int currentResult = rollout(nextLeaf);
@@ -91,14 +106,32 @@ class MonteCarlo {
             me = origMe;
             backPropagate(nextLeaf, currentResult);
         }
+        for (int j = 0; j < possibleMoves.size(); j++){
+            System.out.println("Wins: " + possibleMoves.get(j).wins);
+            System.out.println("Visits: " + possibleMoves.get(j).visits);
+        }
         //after time take move that had best win percentages
         myMove = bestChild(possibleMoves);
        return myMove;
     }
 
     private SearchTree traverse (Vector<SearchTree> leaves) {
-        int index = (int) (Math.random() * (leaves.size() -1));
-        return leaves.elementAt(index);
+        // //int index = (int) (Math.random() * (leaves.size() -1));
+        // Random ran = new Random();
+        // int index = ran.nextInt(leaves.size());
+        // return leaves.elementAt(index);
+
+        double maxWinPercentage = 0.0;
+        int maxWinLeaf = 0;
+        for (int i = 0; i < leaves.size(); i++){
+            SearchTree nextLeaf =  leaves.elementAt(i);
+            double winPercentage = (double)nextLeaf.wins / (double)nextLeaf.visits;
+            if( winPercentage > maxWinPercentage ){
+                maxWinPercentage = winPercentage;
+                maxWinLeaf = i;
+            }
+        }
+        return leaves.elementAt(maxWinLeaf);
     }
 
     private int rollout(SearchTree state) {
