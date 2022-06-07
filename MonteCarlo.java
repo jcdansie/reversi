@@ -2,6 +2,7 @@ import java.util.*;
 import java.lang.*;
 import java.io.*;
 import java.net.*;
+import java.lang.Math;
 
 class MonteCarlo {
 
@@ -10,10 +11,12 @@ class MonteCarlo {
     public PrintWriter sout;
     Random generator = new Random();
 
+
     double t1, t2;
     int me;
-    int origMe;
+    public int origMe;
     int boardState;
+    int opponent;
     int state[][] = new int[8][8]; // state[0][0] is the bottom left corner of the board (on the GUI)
     int turn = -1;
     int round;
@@ -21,13 +24,18 @@ class MonteCarlo {
     int validMoves[] = new int[64];
     int numValidMoves;
 
-    SearchTree root = new SearchTree(state, me);
+    SearchTree root;
 
 
     // main function that (1) establishes a connection with the server, and then plays whenever it is this player's turn
     public MonteCarlo(int _me, String host) {
         me = _me;
         origMe = _me;
+        if (origMe == 1) {
+            opponent = 2;
+        } else {
+            opponent = 1;
+        }
         initClient(host);
 
         int myMove;
@@ -66,12 +74,20 @@ class MonteCarlo {
         root = new SearchTree(copyState(state), me);
         Vector<SearchTree> possibleMoves = new Vector<>();
         int myMove = 0;
-        long endTime = System.currentTimeMillis() + 5200;
+        getValidMoves(round, state);
+        int numValidMovesThisState = numValidMoves;
+        int validMovesThisState[] = validMoves.clone();
+        //Create a searchTree for each possible move.
+        //Then use that vector to create our random search from
+        for (int i = 0; i < numValidMovesThisState; i++) {
+            SearchTree leaf = new SearchTree(makeMoveOnState(copyState(state), validMovesThisState[i]),me, root, validMovesThisState[i]);
+            possibleMoves.add(leaf);
+        }
+        long endTime = System.currentTimeMillis() + 4000;
         while (System.currentTimeMillis() < endTime) {
-            //myMove = generator.nextInt(numValidMoves);
-            SearchTree nextLeaf =  traverse(root);
-            possibleMoves.add(nextLeaf);
+            SearchTree nextLeaf =  traverse(possibleMoves);
             int currentResult = rollout(nextLeaf);
+            nextLeaf.setVisits();
             me = origMe;
             backPropagate(nextLeaf, currentResult);
         }
@@ -80,18 +96,14 @@ class MonteCarlo {
        return myMove;
     }
 
-    private SearchTree traverse (SearchTree root) {
-        //TODO: use an upper confidence bound to explore and exploit
-        getValidMovesForTree(round, root);
-        int move = root.explore();
-        SearchTree nextState = new SearchTree(makeMoveOnState(root.state, move), me, root, move);
-        return nextState;
-
+    private SearchTree traverse (Vector<SearchTree> leaves) {
+        int index = (int) (Math.random() * (leaves.size() -1));
+        return leaves.elementAt(index);
     }
 
     private int rollout(SearchTree state) {
         int[][] copyState = copyState(state.state);
-        while (isTerminalState(copyState) != true) { //TODO: Check that isTerminalState accurately returns when a game is done
+        while (isTerminalState(copyState) != true) {
             copyState = rollout_policy(copyState);
         }
         return calcWinner(copyState);
@@ -105,7 +117,7 @@ class MonteCarlo {
         int numValidMovesThisState = numValidMoves;
         int[] validMovesThisState = validMoves.clone();
         // select one randomly
-        int myMove = validMovesThisState[generator.nextInt(numValidMovesThisState+1)];
+        int myMove = validMovesThisState[(int) (Math.random() * (numValidMovesThisState - 1))];
         // assign newState as state + the random move
         makeMoveOnState(newState, myMove);
         return newState;
@@ -115,7 +127,6 @@ class MonteCarlo {
         if (state.parent == null) {
             return;
         }
-        state.setVisits();
         state.setWins(win);
         backPropagate(state.parent, win);
     }
@@ -123,9 +134,12 @@ class MonteCarlo {
     private int bestChild(Vector<SearchTree> moves) {
         //return child with the most visits
         int move = 0;
-        double percentage = 0;
-        for (int i = 0; i < moves.size(); i++) {
-            if (moves.get(i).wins / (double)moves.get(i).visits > percentage) {
+        double percentage = moves.get(0).wins / (double)moves.get(0).visits;
+        if (moves.get(0).visits == 0) {
+            percentage = 0;
+        }
+        for (int i = 1; i < moves.size(); i++) {
+            if (moves.get(i).wins / (double)moves.get(i).visits >= percentage) {
                 //move = moves.get(i).move;
                 move = i;
                 percentage = moves.get(i).wins / (double)moves.get(i).visits;
@@ -148,9 +162,9 @@ class MonteCarlo {
         int opponentCount = 0;
         for(int j = 0; j < state.length; j++){
             for(int k = 0; k < state[j].length; k++){
-                if (state[j][k] == me) {
+                if (state[j][k] == origMe) {
                     myCount++;
-                } else if (state[j][k] != me && state[j][k] != 0) {
+                } else if (state[j][k] == opponent) {
                     opponentCount++;
                 }
             }
@@ -173,77 +187,6 @@ class MonteCarlo {
         }
     }
 
-    // generates the set of valid moves for the player; returns a list of valid moves (validMoves)
-    private int getValidMoveCount(int round, int state[][]) {
-        int moveCount = 0;
-        int i, j;
-
-        if (round < 4) {
-            if (state[3][3] == 0) {
-                moveCount ++;
-            }
-            if (state[3][4] == 0) {
-                moveCount ++;
-            }
-            if (state[4][3] == 0) {
-                moveCount ++;
-            }
-            if (state[4][4] == 0) {
-                moveCount ++;
-            }
-        }
-        else {
-            for (i = 0; i < 8; i++) {
-                for (j = 0; j < 8; j++) {
-                    if (state[i][j] == 0) {
-                        if (couldBe(state, i, j)) {
-                            moveCount ++;
-                        }
-                    }
-                }
-            }
-        }
-
-        return moveCount;
-    }
-
-    private void getValidMovesForTree(int round, SearchTree node) {
-        int i, j;
-
-        node.numValidMoves = 0;
-        if (round < 4) {
-            if (node.state[3][3] == 0) {
-                node.validMoves[node.numValidMoves] = 3 * 8 + 3;
-                node.numValidMoves++;
-            }
-            if (node.state[3][4] == 0) {
-                node.validMoves[node.numValidMoves] = 3 * 8 + 4;
-                node.numValidMoves++;
-            }
-            if (node.state[4][3] == 0) {
-                node.validMoves[node.numValidMoves] = 4 * 8 + 3;
-                node.numValidMoves++;
-            }
-            if (node.state[4][4] == 0) {
-                node.validMoves[node.numValidMoves] = 4 * 8 + 4;
-                node.numValidMoves++;
-            }
-            for (i = 0; i < node.numValidMoves; i++) {
-            }
-        } else {
-            for (i = 0; i < 8; i++) {
-                for (j = 0; j < 8; j++) {
-                    if (node.state[i][j] == 0) {
-                        if (couldBe(node.state, i, j)) {
-                            node.validMoves[node.numValidMoves] = i * 8 + j;
-                            node.numValidMoves++;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
 
     private int[][] copyState(int state[][]) {
         int newState[][] = new int[8][8];
@@ -258,7 +201,7 @@ class MonteCarlo {
 
     private int[][] makeMoveOnState(int[][] state, int move){
         state[move/8][move%8] = me;
-        changeColors(state, move/8, move%8, me-1);
+        changeColors(state, move/8, move%8, me);
         return state;
     }
 
@@ -293,7 +236,7 @@ class MonteCarlo {
 
         int count = 0;
         for (i = 0; i < seqLen; i++) {
-            if (turn == 0) {
+            if (turn == 1) {
                 if (sequence[i] == 2)
                     count ++;
                 else {
@@ -302,7 +245,7 @@ class MonteCarlo {
                     break;
                 }
             }
-            else {
+            else if (turn == 2){
                 if (sequence[i] == 1)
                     count ++;
                 else {
@@ -314,7 +257,7 @@ class MonteCarlo {
         }
 
         if (count > 10) {
-            if (turn == 0) {
+            if (turn == 1) {
                 i = 1;
                 r = row+incy*i;
                 c = col+incx*i;
@@ -325,7 +268,7 @@ class MonteCarlo {
                     c = col+incx*i;
                 }
             }
-            else {
+            else if (turn == 2) {
                 i = 1;
                 r = row+incy*i;
                 c = col+incx*i;
