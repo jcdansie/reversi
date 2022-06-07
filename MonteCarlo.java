@@ -83,7 +83,7 @@ class MonteCarlo {
             SearchTree leaf = new SearchTree(makeMoveOnState(copyState(state), validMovesThisState[i]),me, root, validMovesThisState[i]);
             possibleMoves.add(leaf);
         }
-        long endTime = System.currentTimeMillis() + 4000;
+        long endTime = System.currentTimeMillis() + 5000;
         while (System.currentTimeMillis() < endTime) {
             SearchTree nextLeaf =  traverse(possibleMoves);
             int currentResult = rollout(nextLeaf);
@@ -139,12 +139,20 @@ class MonteCarlo {
             percentage = 0;
         }
         for (int i = 1; i < moves.size(); i++) {
-            if (moves.get(i).wins / (double)moves.get(i).visits >= percentage) {
+            double movePercentage;
+            if (moves.get(i).visits == 0) {
+                movePercentage = 0;
+            } else {
+                movePercentage = moves.get(i).wins / (double)moves.get(i).visits;
+            }
+            System.out.println(moves.get(i).move / 8 + ", " + moves.get(i).move % 8 + " - " + movePercentage);
+            if ( movePercentage >= percentage) {
                 //move = moves.get(i).move;
                 move = i;
                 percentage = moves.get(i).wins / (double)moves.get(i).visits;
             }
         }
+        System.out.println(moves.get(move).move / 8 + ", " + moves.get(move).move);
         return move;
     }
 
