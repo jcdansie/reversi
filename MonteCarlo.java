@@ -258,7 +258,7 @@ class MonteCarlo {
 
     private int[][] makeMoveOnState(int[][] state, int move){
         state[move/8][move%8] = me;
-        changeColors(state, move/8, move%8, me);
+        changeColors(state, move/8, move%8, me-1);
         return state;
     }
 
