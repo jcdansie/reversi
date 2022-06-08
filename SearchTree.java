@@ -8,6 +8,7 @@ public class SearchTree {
     int move;
     int[][] state;
     int[] validMoves = new int[64];
+    Vector<SearchTree> children;
     int numValidMoves;
     Random generator = new Random();
     SearchTree parent = null;

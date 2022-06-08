@@ -1,6 +1,7 @@
 import java.util.*;
 
 import javax.naming.spi.DirStateFactory.Result;
+import javax.swing.RootPaneContainer;
 
 import java.lang.*;
 import java.io.*;
@@ -69,100 +70,123 @@ class MonteCarlo {
         //}
     }
 
-    // You should modify this function
-    // validMoves is a list of valid locations that you could place your "stone" on this turn
-    // Note that "state" is a global variable 2D list that shows the state of the game
+
     private int move() {
-        //while time remains for move
+        //initial state
         root = new SearchTree(copyState(state), me);
-        Vector<SearchTree> possibleMoves = new Vector<>();
-        int myMove = 0;
-        getValidMoves(round, state);
-        int numValidMovesThisState = numValidMoves;
-        int validMovesThisState[] = validMoves.clone();
-        //Create a searchTree for each possible move.
-        //Then use that vector to create our random search from
-        for (int i = 0; i < numValidMovesThisState; i++) {
-            SearchTree leaf = new SearchTree(makeMoveOnState(copyState(state), validMovesThisState[i]),me, root, validMovesThisState[i]);
-            possibleMoves.add(leaf);
+        root.numValidMoves = numValidMoves;
+        root.validMoves = validMoves.clone();
+        root.children = new Vector<>();
+        for( int i = 0; i < numValidMoves; i++ ) {
+            SearchTree child = new SearchTree(makeMoveOnState(copyState(state), validMoves[i]), opponent);
+            child.parent = root;
+            root.children.add(child);
         }
 
-        long endTime = System.currentTimeMillis() + 2000;
+        long endTime = System.currentTimeMillis() + 4000;
         while (System.currentTimeMillis() < endTime) {
-            for (int j = 0; j < possibleMoves.size(); j++){
-                SearchTree nextLeaf =  possibleMoves.elementAt(j);
-                int currentResult = rollout(nextLeaf);
-                nextLeaf.setVisits();
-                me = origMe;
-                backPropagate(nextLeaf, currentResult);
+            SearchTree leaf = traverse(root);
+
+            int result = rollout(leaf);
+    
+            backPropagate(leaf, result);
+        }
+
+        return bestChild(root.children);
+    }
+
+    private SearchTree traverse(SearchTree tree) {
+        double constant = 2;
+        double maxValue = 0.0;
+        int maxChild = 0;
+        for( int i = 0; i < tree.children.size(); i++ ){
+            SearchTree child = tree.children.get(i);
+            double value;
+            if(child.visits == 0){
+                value = 100000;
+            } else {
+                value = (double)child.wins / (double)child.visits + constant * (Math.sqrt( Math.log( (double) tree.visits) / (double) child.visits ) );
+            }
+
+            if( value > maxValue ) {
+                maxChild = i;
+                maxValue = value;
             }
         }
 
-        endTime = System.currentTimeMillis() + 2000;
-        while (System.currentTimeMillis() < endTime) {
-            SearchTree nextLeaf =  traverse(possibleMoves);
-            int currentResult = rollout(nextLeaf);
-            nextLeaf.setVisits();
-            me = origMe;
-            backPropagate(nextLeaf, currentResult);
+        SearchTree chosenChild = tree.children.get(maxChild);
+
+        if( chosenChild.visits == 0 ) {
+            return chosenChild;
+        } else {
+            switchPlayers();
+            expandLeaf(chosenChild);
+            return traverse(chosenChild);
         }
-        for (int j = 0; j < possibleMoves.size(); j++){
-            System.out.println("Wins: " + possibleMoves.get(j).wins);
-            System.out.println("Visits: " + possibleMoves.get(j).visits);
-        }
-        //after time take move that had best win percentages
-        myMove = bestChild(possibleMoves);
-       return myMove;
+
     }
 
-    private SearchTree traverse (Vector<SearchTree> leaves) {
-        // //int index = (int) (Math.random() * (leaves.size() -1));
-        // Random ran = new Random();
-        // int index = ran.nextInt(leaves.size());
-        // return leaves.elementAt(index);
+    private void expandLeaf(SearchTree tree) {
+        tree.children = new Vector<>();
+        getValidMoves(round+1, tree.state);
+        tree.numValidMoves = numValidMoves;
+        tree.validMoves = validMoves.clone();
 
-        double maxWinPercentage = 0.0;
-        int maxWinLeaf = 0;
-        for (int i = 0; i < leaves.size(); i++){
-            SearchTree nextLeaf =  leaves.elementAt(i);
-            double winPercentage = (double)nextLeaf.wins / (double)nextLeaf.visits;
-            if( winPercentage > maxWinPercentage ){
-                maxWinPercentage = winPercentage;
-                maxWinLeaf = i;
-            }
+        for( int i = 0; i < tree.numValidMoves; i++ ) {
+            SearchTree child = new SearchTree(makeMoveOnState(copyState(tree.state), tree.validMoves[i]), me);
+            child.parent = tree;
+            tree.children.add(child);
         }
-        return leaves.elementAt(maxWinLeaf);
     }
 
-    private int rollout(SearchTree state) {
-        int[][] copyState = copyState(state.state);
-        while (isTerminalState(copyState) != true) {
+    private int rollout(SearchTree tree) {
+        int[][] copyState = copyState(tree.state);
+        while ( !isTerminalState(copyState) ) {
             copyState = rollout_policy(copyState);
+            switchPlayers();
         }
         return calcWinner(copyState);
     }
 
+    private void backPropagate(SearchTree state, int win) {
+        if (state.parent == null) {
+            state.setWins(win);
+            state.setVisits();
+            return;
+        }
+        state.setWins(win);
+        state.setVisits();
+        backPropagate(state.parent, win);
+    }
+
     private int[][] rollout_policy(int[][] state) {
-        switchPlayers();
         int[][] newState = copyState(state);
         // get possible moves
         getValidMoves(round, newState);
         int numValidMovesThisState = numValidMoves;
         int[] validMovesThisState = validMoves.clone();
         // select one randomly
-        int myMove = validMovesThisState[(int) (Math.random() * (numValidMovesThisState - 1))];
+        Random rand = new Random();
+        int myMove = validMovesThisState[ rand.nextInt(numValidMovesThisState + 1) ];
         // assign newState as state + the random move
-        makeMoveOnState(newState, myMove);
-        return newState;
+        return makeMoveOnState(newState, myMove);
     }
 
-    private void backPropagate(SearchTree state, int win) {
-        if (state.parent == null) {
-            return;
+    private boolean isTerminalState(int[][] state) {
+        getValidMoves(round, state);
+        int moveCount = numValidMoves;
+        if (moveCount <= 0) {
+            switchPlayers();
+            getValidMoves(round, state);
+            moveCount = numValidMoves;
+            switchPlayers();
+            if (moveCount <= 0) {
+                return true;
+            }
         }
-        state.setWins(win);
-        backPropagate(state.parent, win);
+        return false;
     }
+    
 
     private int bestChild(Vector<SearchTree> moves) {
         //return child with the most visits
@@ -180,7 +204,6 @@ class MonteCarlo {
         }
         return move;
     }
-
 
     private void switchPlayers(){
         if(me == 1){
@@ -209,17 +232,6 @@ class MonteCarlo {
         }
     }
 
-    private boolean isTerminalState(int[][] state) {
-        getValidMoves(round, state);
-        int moveCount = numValidMoves;
-        if (moveCount <= 0) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
 
     private int[][] copyState(int state[][]) {
         int newState[][] = new int[8][8];
@@ -234,7 +246,7 @@ class MonteCarlo {
 
     private int[][] makeMoveOnState(int[][] state, int move){
         state[move/8][move%8] = me;
-        changeColors(state, move/8, move%8, me);
+        changeColors(state, move/8, move%8, me-1);
         return state;
     }
 
