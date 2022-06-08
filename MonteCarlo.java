@@ -74,6 +74,7 @@ class MonteCarlo {
     private int move() {
         //initial state
         root = new SearchTree(copyState(state), me);
+        getValidMoves(round, root.state);
         root.numValidMoves = numValidMoves;
         root.validMoves = validMoves.clone();
         root.children = new Vector<>();
@@ -90,15 +91,26 @@ class MonteCarlo {
             int result = rollout(leaf);
     
             backPropagate(leaf, result);
+
+            me = origMe;
         }
+
+        for(int i = 0; i < root.children.size(); i++){
+            System.out.println("Visits: " + root.children.get(i).visits);
+            System.out.println("Wins: " + root.children.get(i).wins);
+        }
+
 
         return bestChild(root.children);
     }
 
     private SearchTree traverse(SearchTree tree) {
-        double constant = 2;
-        double maxValue = 0.0;
+        double constant = 100;
+        double maxValue = -10000;
         int maxChild = 0;
+        if(tree.children.size() <= 0){
+            return tree;
+        }
         for( int i = 0; i < tree.children.size(); i++ ){
             SearchTree child = tree.children.get(i);
             double value;
@@ -142,10 +154,17 @@ class MonteCarlo {
     private int rollout(SearchTree tree) {
         int[][] copyState = copyState(tree.state);
         while ( !isTerminalState(copyState) ) {
-            copyState = rollout_policy(copyState);
             switchPlayers();
+            getValidMoves(round, copyState);
+
+            if(numValidMoves == 0) {
+                continue;
+            }
+
+            copyState = rollout_policy(copyState);
         }
-        return calcWinner(copyState);
+        //return calcWinner(copyState);
+        return calcScore(copyState);
     }
 
     private void backPropagate(SearchTree state, int win) {
@@ -161,13 +180,9 @@ class MonteCarlo {
 
     private int[][] rollout_policy(int[][] state) {
         int[][] newState = copyState(state);
-        // get possible moves
-        getValidMoves(round, newState);
-        int numValidMovesThisState = numValidMoves;
-        int[] validMovesThisState = validMoves.clone();
         // select one randomly
         Random rand = new Random();
-        int myMove = validMovesThisState[ rand.nextInt(numValidMovesThisState + 1) ];
+        int myMove = validMoves[ rand.nextInt(numValidMoves) ];
         // assign newState as state + the random move
         return makeMoveOnState(newState, myMove);
     }
@@ -213,6 +228,25 @@ class MonteCarlo {
         }
     }
 
+    private int calcScore(int[][] state) {
+        int myCount = 0;
+        int opponentCount = 0;
+        for(int j = 0; j < state.length; j++){
+            for(int k = 0; k < state[j].length; k++){
+                if (state[j][k] == origMe) {
+                    myCount++;
+                } else if (state[j][k] == opponent) {
+                    opponentCount++;
+                }
+            }
+        }
+        if (myCount > opponentCount) {
+            return myCount-opponentCount + 150;
+        } else {
+            return myCount-opponentCount;
+        }
+    }
+
     private int calcWinner(int[][] state) {
         int myCount = 0;
         int opponentCount = 0;
@@ -244,9 +278,18 @@ class MonteCarlo {
         return newState;
     }
 
+    private void printState(int state[][]) {
+        for(int j = 0; j < state.length; j++){
+            for(int k = 0; k < state[j].length; k++){
+                System.out.print(state[j][k]);
+            }
+            System.out.println();
+        }
+    }
+
     private int[][] makeMoveOnState(int[][] state, int move){
         state[move/8][move%8] = me;
-        changeColors(state, move/8, move%8, me-1);
+        changeColors(state, move/8, move%8, me);
         return state;
     }
 
